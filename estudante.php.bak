@@ -189,13 +189,20 @@ if ($aba_ativa === 'editar' && isset($_GET['id'])) {
                 <a href="estudante.php" class="list-group-item list-group-item-action active">
                     <i class="fas fa-user-graduate"></i> Estudantes
                 </a>
-                <a href="notas.php" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chalkboard-teacher"></i> Notas
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chalkboard-teacher"></i> Professores
                 </a>
-                <a href="cursos.php" class="list-group-item list-group-item-action">
+                <a href="#" class="list-group-item list-group-item-action">
                     <i class="fas fa-book"></i> Cursos
-                <a href="relatorios.php" class="list-group-item list-group-item-action">
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-door-open"></i> Salas
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
                     <i class="fas fa-chart-bar"></i> Relatórios
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-cog"></i> Configurações
                 </a>
             </div>
         </div>

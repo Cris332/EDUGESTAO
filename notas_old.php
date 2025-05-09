@@ -1,0 +1,1137 @@
+<?php
+// Incluir arquivos necessários
+require_once 'conexao.php';
+require_once 'notas_functions.php';
+
+// Processar requisições AJAX para salvar notas
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao']) && $_POST['acao'] === 'salvar_nota') {
+    header('Content-Type: application/json');
+    
+    // Registrar os dados recebidos para debug
+    error_log('Requisição AJAX recebida: ' . print_r($_POST, true));
+    
+    $resultado = salvarNota($conexao, $_POST);
+    
+    // Registrar o resultado para debug
+    error_log('Resultado do processamento: ' . print_r($resultado, true));
+    
+    echo json_encode($resultado);
+    exit;
+}
+
+// Inicializar variáveis
+$turma_id = isset($_GET['turma_id']) ? (int)$_GET['turma_id'] : 0;
+$aluno_id = isset($_GET['aluno_id']) ? (int)$_GET['aluno_id'] : 0;
+$disciplina_id = isset($_GET['disciplina_id']) ? (int)$_GET['disciplina_id'] : 0;
+$mensagem = '';
+$tipo_mensagem = '';
+
+// Obter lista de turmas
+$turmas = obterTurmas($conexao);
+
+// Obter lista de disciplinas
+$disciplinas = obterDisciplinas($conexao);
+
+// Obter alunos da turma selecionada
+$alunos = [];
+if ($turma_id > 0) {
+    $alunos = obterAlunosPorTurma($conexao, $turma_id);
+}
+
+// Obter notas do aluno selecionado
+$notas = [];
+if ($aluno_id > 0) {
+    $notas = obterNotasAluno($conexao, $aluno_id, $disciplina_id);
+}
+?>
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Notas - Sistema de Gestão Acadêmica</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        /* Estilos gerais */
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .btn {
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-control, .form-select {
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+        }
+        
+        .nav-link.active {
+            border-bottom: 3px solid #4e73df;
+            color: #4e73df;
+            font-weight: 600;
+        }
+        
+        /* Estilos do sidebar e animações */
+        #sidebar-wrapper {
+            min-height: 100vh;
+            width: 250px;
+            transition: margin 0.25s ease-out;
+            z-index: 1;
+        }
+        
+        #page-content-wrapper {
+            min-width: 100vw;
+            transition: margin-left 0.25s ease-out;
+        }
+        
+        .sb-sidenav-toggled #sidebar-wrapper {
+            margin-left: -250px;
+        }
+        
+        .sb-sidenav-toggled #page-content-wrapper {
+            margin-left: 0;
+        }
+        
+        /* Animações para itens do menu */
+        .list-group-item {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            padding-left: 1.25rem;
+        }
+        
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+            border-left: 3px solid #4e73df;
+            padding-left: 1.5rem;
+        }
+        
+        .list-group-item.active {
+            background-color: rgba(78, 115, 223, 0.1);
+            color: #4e73df;
+            border-left: 3px solid #4e73df;
+            font-weight: 600;
+        }
+        
+        .list-group-item i {
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+            transition: transform 0.2s ease;
+        }
+        
+        .list-group-item:hover i {
+            transform: scale(1.2);
+        }
+        
+        /* Animação para dropdown do usuário */
+        .dropdown-menu {
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Responsividade */
+        @media (min-width: 992px) {
+            #sidebar-wrapper {
+                margin-left: 0;
+            }
+            
+            #page-content-wrapper {
+                min-width: 0;
+                width: 100%;
+            }
+            
+            .sb-sidenav-toggled #sidebar-wrapper {
+                margin-left: -250px;
+            }
+        }
+        
+        /* Efeito de hover personalizado */
+        .menu-hover {
+            background-color: #f0f7ff;
+        }
+        
+        /* Estilos específicos para a página de notas */
+        .nota-input {
+            width: 70px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .nota-input:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+        }
+        
+        .nota-input.is-valid {
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .nota-input.is-invalid {
+            border-color: #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .nota-cell {
+            position: relative;
+        }
+        
+        .nota-feedback {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s ease;
+        }
+        
+        .nota-feedback.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .nota-feedback.success {
+            background-color: #28a745;
+        }
+        
+        .nota-feedback.error {
+            background-color: #dc3545;
+        }
+        
+        .media-cell {
+            font-weight: bold;
+            background-color: rgba(78, 115, 223, 0.1);
+            border-radius: 4px;
+            padding: 5px;
+            text-align: center;
+        }
+        
+        .media-aprovado {
+            color: #28a745;
+        }
+        
+        .media-reprovado {
+            color: #dc3545;
+        }
+        
+        .bimestre-header {
+            background-color: #4e73df;
+            color: white;
+            text-align: center;
+            border-radius: 4px;
+        }
+        
+        .disciplina-row {
+            background-color: rgba(0, 0, 0, 0.03);
+            font-weight: bold;
+        }
+        
+        .nota-table th, .nota-table td {
+            vertical-align: middle;
+        }
+        
+        .aluno-select {
+            max-width: 300px;
+        }
+        
+        .turma-select {
+            max-width: 250px;
+        }
+        
+        .disciplina-select {
+            max-width: 250px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 0.2em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border .75s linear infinite;
+            vertical-align: middle;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-spinner.show {
+            opacity: 1;
+        }
+        
+        @keyframes spinner-border {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Menu de navegação compartilhado -->
+    <?php include 'menu.php'; ?>
+    
+    <!-- Conteúdo principal -->
+    <div class="container-fluid py-4">
+        <!-- Cabeçalho da página -->
+        <div class="page-header">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h1 class="h3 mb-0">Gestão de Notas</h1>
+                        <p class="text-muted">Lançamento e visualização de notas dos estudantes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alertas de mensagens -->
+        <?php if (!empty($mensagem)): ?>
+        <div class="alert alert-<?php echo $tipo_mensagem; ?> alert-dismissible fade show" role="alert">
+            <?php echo $mensagem; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Formulário de filtro de notas -->
+                                <div class="dropdown-menu dropdown-menu-end shadow-sm p-0" aria-labelledby="notificationDropdown" style="width: 320px;">
+                                    <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                                        <h6 class="mb-0 fw-bold">Notificações</h6>
+                                        <a href="#" class="text-decoration-none small">Marcar todas como lidas</a>
+                                    </div>
+                                    <div class="notification-list" style="max-height: 300px; overflow-y: auto;">
+                                        <a href="#" class="dropdown-item p-3 border-bottom d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <div class="bg-primary text-white rounded-circle p-2">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </div>
+                                            </div>
+                                            <div class="ms-3">
+                                                <p class="mb-0">Novo estudante cadastrado</p>
+                                                <small class="text-muted">Há 5 minutos</small>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="dropdown-item p-3 border-bottom d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <div class="bg-success text-white rounded-circle p-2">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                            </div>
+                                            <div class="ms-3">
+                                                <p class="mb-0">Notas atualizadas com sucesso</p>
+                                                <small class="text-muted">Há 2 horas</small>
+                                            </div>
+                                        </a>
+                                        <a href="#" class="dropdown-item p-3 border-bottom d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <div class="bg-warning text-white rounded-circle p-2">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                </div>
+                                            </div>
+                                            <div class="ms-3">
+                                                <p class="mb-0">Lembrete: Reunião de professores</p>
+                                                <small class="text-muted">Amanhã às 14:00</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    <div class="p-2 text-center border-top">
+                                        <a href="#" class="text-decoration-none">Ver todas as notificações</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Page content -->
+            <div class="container-fluid p-4">
+                <?php if (!empty($mensagem)): ?>
+                <div class="alert alert-<?php echo $tipo_mensagem; ?> alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                    <?php echo $mensagem; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Filtros -->
+                <div class="card mb-4 animate__animated animate__fadeInUp">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-filter me-2"></i> Filtros</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="filtroForm" class="row g-3" method="GET" action="notas.php">
+                            <div class="col-md-4">
+                                <label for="turma_id" class="form-label">Turma</label>
+                                <select id="turma_id" name="turma_id" class="form-select turma-select">
+                                    <option value="">Selecione uma turma</option>
+                                    <?php foreach ($turmas as $turma): ?>
+                                    <option value="<?php echo $turma['id']; ?>" <?php echo $turma_id == $turma['id'] ? 'selected' : ''; ?>>
+                                        <?php echo $turma['nome'] . ' - ' . $turma['curso'] . ' (' . $turma['periodo'] . ')'; ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="aluno_id" class="form-label">Aluno</label>
+                                <select id="aluno_id" name="aluno_id" class="form-select aluno-select" <?php echo empty($alunos) ? 'disabled' : ''; ?>>
+                                    <option value="">Selecione um aluno</option>
+                                    <?php foreach ($alunos as $aluno): ?>
+                                    <option value="<?php echo $aluno['id']; ?>" <?php echo $aluno_id == $aluno['id'] ? 'selected' : ''; ?>>
+                                        <?php echo $aluno['nome'] . ' (' . $aluno['matricula'] . ')'; ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="disciplina_id" class="form-label">Disciplina (opcional)</label>
+                                <select id="disciplina_id" name="disciplina_id" class="form-select disciplina-select" <?php echo $aluno_id == 0 ? 'disabled' : ''; ?>>
+                                    <option value="">Todas as disciplinas</option>
+                                    <?php foreach ($disciplinas as $disciplina): ?>
+                                    <option value="<?php echo $disciplina['id']; ?>" <?php echo $disciplina_id == $disciplina['id'] ? 'selected' : ''; ?>>
+                                        <?php echo $disciplina['nome']; ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary" id="btnFiltrar">
+                                    <i class="fas fa-search me-2"></i> Filtrar
+                                </button>
+                                <button type="button" id="limparFiltro" class="btn btn-secondary ms-2">
+                                    <i class="fas fa-eraser me-2"></i> Limpar Filtros
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <?php if ($aluno_id > 0 && !empty($notas)): ?>
+                <!-- Tabela de Notas -->
+                <div class="card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i> Notas do Aluno</h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnImprimirBoletim">
+                                <i class="fas fa-print me-2"></i> Imprimir Boletim
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover nota-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">Disciplina</th>
+                                        <th colspan="5" class="text-center bimestre-header">1º Bimestre</th>
+                                        <th colspan="5" class="text-center bimestre-header">2º Bimestre</th>
+                                        <th colspan="5" class="text-center bimestre-header">3º Bimestre</th>
+                                        <th colspan="5" class="text-center bimestre-header">4º Bimestre</th>
+                                        <th class="text-center">Média Final</th>
+                                    </tr>
+                                    <tr>
+                                        <th></th>
+                                        <?php for ($i = 1; $i <= 4; $i++): ?>
+                                        <th class="text-center">Prova</th>
+                                        <th class="text-center">Trab.</th>
+                                        <th class="text-center">Part.</th>
+                                        <th class="text-center">Rec.</th>
+                                        <th class="text-center">Média</th>
+                                        <?php endfor; ?>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($notas as $disciplina_id => $disciplina): ?>
+                                    <tr class="disciplina-row">
+                                        <td><?php echo $disciplina['nome']; ?></td>
+                                        
+                                        <?php 
+                                        $media_final = 0;
+                                        $count_bimestres = 0;
+                                        
+                                        for ($bimestre = 1; $bimestre <= 4; $bimestre++): 
+                                            $media_bimestre = isset($disciplina['bimestres'][$bimestre]['media']) ? $disciplina['bimestres'][$bimestre]['media'] : null;
+                                            
+                                            if ($media_bimestre !== null) {
+                                                $media_final += $media_bimestre;
+                                                $count_bimestres++;
+                                            }
+                                        ?>
+                                            <!-- Prova -->
+                                            <td class="text-center nota-cell">
+                                                <input type="number" min="0" max="10" step="0.1" 
+                                                       class="nota-input" 
+                                                       data-aluno="<?php echo $aluno_id; ?>" 
+                                                       data-disciplina="<?php echo $disciplina_id; ?>" 
+                                                       data-bimestre="<?php echo $bimestre; ?>" 
+                                                       data-tipo="prova" 
+                                                       value="<?php echo isset($disciplina['bimestres'][$bimestre]['prova']) ? $disciplina['bimestres'][$bimestre]['prova']['valor'] : ''; ?>">
+                                                <div class="nota-feedback">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <div class="loading-spinner"></div>
+                                            </td>
+                                            
+                                            <!-- Trabalho -->
+                                            <td class="text-center nota-cell">
+                                                <input type="number" min="0" max="10" step="0.1" 
+                                                       class="nota-input" 
+                                                       data-aluno="<?php echo $aluno_id; ?>" 
+                                                       data-disciplina="<?php echo $disciplina_id; ?>" 
+                                                       data-bimestre="<?php echo $bimestre; ?>" 
+                                                       data-tipo="trabalho" 
+                                                       value="<?php echo isset($disciplina['bimestres'][$bimestre]['trabalho']) ? $disciplina['bimestres'][$bimestre]['trabalho']['valor'] : ''; ?>">
+                                                <div class="nota-feedback">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <div class="loading-spinner"></div>
+                                            </td>
+                                            
+                                            <!-- Participação -->
+                                            <td class="text-center nota-cell">
+                                                <input type="number" min="0" max="10" step="0.1" 
+                                                       class="nota-input" 
+                                                       data-aluno="<?php echo $aluno_id; ?>" 
+                                                       data-disciplina="<?php echo $disciplina_id; ?>" 
+                                                       data-bimestre="<?php echo $bimestre; ?>" 
+                                                       data-tipo="participacao" 
+                                                       value="<?php echo isset($disciplina['bimestres'][$bimestre]['participacao']) ? $disciplina['bimestres'][$bimestre]['participacao']['valor'] : ''; ?>">
+                                                <div class="nota-feedback">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <div class="loading-spinner"></div>
+                                            </td>
+                                            
+                                            <!-- Recuperação -->
+                                            <td class="text-center nota-cell">
+                                                <input type="number" min="0" max="10" step="0.1" 
+                                                       class="nota-input" 
+                                                       data-aluno="<?php echo $aluno_id; ?>" 
+                                                       data-disciplina="<?php echo $disciplina_id; ?>" 
+                                                       data-bimestre="<?php echo $bimestre; ?>" 
+                                                       data-tipo="recuperacao" 
+                                                       value="<?php echo isset($disciplina['bimestres'][$bimestre]['recuperacao']) ? $disciplina['bimestres'][$bimestre]['recuperacao']['valor'] : ''; ?>">
+                                                <div class="nota-feedback">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <div class="loading-spinner"></div>
+                                            </td>
+                                            
+                                            <!-- Média do Bimestre -->
+                                            <td class="text-center media-cell <?php echo $media_bimestre >= 6 ? 'media-aprovado' : ($media_bimestre > 0 ? 'media-reprovado' : ''); ?>">
+                                                <?php echo $media_bimestre > 0 ? number_format($media_bimestre, 1, ',', '') : '-'; ?>
+                                            </td>
+                                        <?php endfor; ?>
+                                        
+                                        <!-- Média Final -->
+                                        <?php 
+                                        $media_final = $count_bimestres > 0 ? round($media_final / $count_bimestres, 1) : 0;
+                                        $situacao_class = $media_final >= 6 ? 'media-aprovado' : ($media_final > 0 ? 'media-reprovado' : '');
+                                        ?>
+                                        <td class="text-center media-cell <?php echo $situacao_class; ?>">
+                                            <?php echo $media_final > 0 ? number_format($media_final, 1, ',', '') : '-'; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php elseif ($aluno_id > 0 && empty($notas)): ?>
+                <div class="alert alert-info animate__animated animate__fadeIn">
+                    <i class="fas fa-info-circle me-2"></i> Não há notas registradas para este aluno.
+                </div>
+                <?php elseif ($turma_id > 0 && empty($alunos)): ?>
+                <div class="alert alert-info animate__animated animate__fadeIn">
+                    <i class="fas fa-info-circle me-2"></i> Não há alunos cadastrados nesta turma.
+                </div>
+                <?php elseif ($turma_id == 0): ?>
+                <div class="alert alert-info animate__animated animate__fadeIn">
+                    <i class="fas fa-info-circle me-2"></i> Selecione uma turma para visualizar os alunos e suas notas.
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Impressão do Boletim -->
+    <div class="modal fade" id="boletimModal" tabindex="-1" aria-labelledby="boletimModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="boletimModalLabel">Boletim Escolar</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" id="boletimPrint">
+                    <div class="text-center mb-4">
+                        <h3>EduGestão</h3>
+                        <h5>Boletim Escolar</h5>
+                        <p class="mb-0" id="boletimAlunoNome"></p>
+                        <p class="mb-0" id="boletimAlunoMatricula"></p>
+                        <p id="boletimAlunoTurma"></p>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="tabelaBoletim">
+                            <thead>
+                                <tr>
+                                    <th>Disciplina</th>
+                                    <th>1º Bim</th>
+                                    <th>2º Bim</th>
+                                    <th>3º Bim</th>
+                                    <th>4º Bim</th>
+                                    <th>Média</th>
+                                    <th>Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <p><strong>Legenda:</strong></p>
+                            <ul>
+                                <li>Média para aprovação: 6,0</li>
+                                <li>Frequência mínima: 75%</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <p>Data: <?php echo date('d/m/Y'); ?></p>
+                            <p class="mt-4">_______________________________</p>
+                            <p>Assinatura do Responsável</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i> Fechar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnPrintBoletim">
+                        <i class="fas fa-print me-2"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                animation: true,
+                delay: {show: 100, hide: 100}
+            });
+        });
+        
+        // Configurar o sidebar toggle
+        var sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) {
+            // Verificar estado salvo no localStorage
+            if (localStorage.getItem('sb|sidebar-toggle') === 'true') {
+                document.body.classList.add('sb-sidenav-toggled');
+            }
+            
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.body.classList.toggle('sb-sidenav-toggled');
+                
+                // Animar o ícone do toggle com rotação
+                var icon = this.querySelector('i');
+                icon.style.transition = 'transform 0.3s ease';
+                
+                if (document.body.classList.contains('sb-sidenav-toggled')) {
+                    icon.classList.replace('fa-bars', 'fa-times');
+                    icon.style.transform = 'rotate(180deg)';
+                } else {
+                    icon.classList.replace('fa-times', 'fa-bars');
+                    icon.style.transform = 'rotate(0deg)';
+                }
+                
+                // Salvar estado no localStorage
+                localStorage.setItem('sb|sidebar-toggle', document.body.classList.contains('sb-sidenav-toggled'));
+            });
+        }
+        
+        // Adicionar animações aos itens do menu
+        var menuItems = document.querySelectorAll('.list-group-item');
+        menuItems.forEach(function(item, index) {
+            // Adicionar delay na animação inicial para efeito cascata
+            setTimeout(function() {
+                item.style.opacity = '1';
+                item.style.transform = 'translateX(0)';
+            }, index * 50);
+            
+            item.addEventListener('mouseenter', function() {
+                // Adicionar classe para efeito de hover
+                this.classList.add('menu-hover');
+                
+                // Animar o ícone
+                var icon = this.querySelector('i');
+                if (icon) {
+                    icon.style.transform = 'scale(1.2)';
+                }
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                // Remover classe ao sair
+                this.classList.remove('menu-hover');
+                
+                // Restaurar o ícone
+                var icon = this.querySelector('i');
+                if (icon) {
+                    icon.style.transform = 'scale(1)';
+                }
+            });
+        });
+        
+        // Estilizar os itens do menu inicialmente (para animação de entrada)
+        menuItems.forEach(function(item) {
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(-20px)';
+            item.style.transition = 'all 0.3s ease';
+        });
+        
+        // Fechar sidebar automaticamente em telas pequenas após clicar em um item
+        if (window.innerWidth < 992) {
+            menuItems.forEach(function(item) {
+                item.addEventListener('click', function() {
+                    document.body.classList.add('sb-sidenav-toggled');
+                });
+            });
+        }
+        
+        // Animação para os dropdowns
+        var dropdowns = document.querySelectorAll('.dropdown');
+        dropdowns.forEach(function(dropdown) {
+            dropdown.addEventListener('show.bs.dropdown', function() {
+                var menu = this.querySelector('.dropdown-menu');
+                menu.classList.add('animate__animated', 'animate__fadeIn');
+                menu.style.animationDuration = '0.3s';
+            });
+            
+            dropdown.addEventListener('hide.bs.dropdown', function() {
+                var menu = this.querySelector('.dropdown-menu');
+                menu.classList.add('animate__animated', 'animate__fadeOut');
+                menu.style.animationDuration = '0.2s';
+            });
+        });
+        
+        // Funcionalidade para filtrar alunos por turma
+        var turmaSelect = document.getElementById('turma_id');
+        var alunoSelect = document.getElementById('aluno_id');
+        var disciplinaSelect = document.getElementById('disciplina_id');
+        var filtroForm = document.getElementById('filtroForm');
+        
+        // Carregar alunos quando a turma muda
+        if (turmaSelect) {
+            turmaSelect.addEventListener('change', function() {
+                if (this.value) {
+                    // Redirecionar imediatamente para a página com a turma selecionada
+                    window.location.href = 'notas.php?turma_id=' + this.value;
+                } else {
+                    // Desabilitar o select de alunos se nenhuma turma for selecionada
+                    if (alunoSelect) {
+                        alunoSelect.disabled = true;
+                        alunoSelect.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+                    }
+                }
+            });
+        }
+        
+        // Atualizar a página quando o aluno muda
+        if (alunoSelect) {
+            alunoSelect.addEventListener('change', function() {
+                if (this.value && turmaSelect.value) {
+                    // Habilitar o select de disciplinas
+                    if (disciplinaSelect) {
+                        disciplinaSelect.disabled = false;
+                    }
+                    
+                    // Submeter o formulário automaticamente
+                    filtroForm.submit();
+                } else {
+                    // Desabilitar o select de disciplinas se nenhum aluno for selecionado
+                    if (disciplinaSelect) {
+                        disciplinaSelect.disabled = true;
+                    }
+                }
+            });
+        }
+        
+        // Atualizar a página quando a disciplina muda
+        if (disciplinaSelect) {
+            disciplinaSelect.addEventListener('change', function() {
+                if (alunoSelect.value && turmaSelect.value) {
+                    // Submeter o formulário automaticamente
+                    filtroForm.submit();
+                }
+            });
+        }
+        
+        // Evitar submissão duplicada do formulário
+        if (filtroForm) {
+            filtroForm.addEventListener('submit', function(e) {
+                // Desabilitar o botão de submissão para evitar cliques duplos
+                var btnFiltrar = document.getElementById('btnFiltrar');
+                if (btnFiltrar) {
+                    btnFiltrar.disabled = true;
+                    btnFiltrar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Filtrando...';
+                }
+            });
+        }
+        
+        // Limpar filtros
+        var limparFiltroBtn = document.getElementById('limparFiltro');
+        if (limparFiltroBtn) {
+            limparFiltroBtn.addEventListener('click', function() {
+                window.location.href = 'notas.php';
+            });
+        }
+        
+        // Funcionalidade para salvar notas em tempo real
+        function inicializarInputsNotas() {
+            var notaInputs = document.querySelectorAll('.nota-input');
+            if (notaInputs.length > 0) {
+                notaInputs.forEach(function(input) {
+                    // Limpar eventos anteriores para evitar duplicação
+                    input.removeEventListener('change', handleNotaChange);
+                    input.removeEventListener('focus', handleNotaFocus);
+                    
+                    // Salvar o valor original para detectar mudanças
+                    input.dataset.originalValue = input.value;
+                    
+                    // Adicionar eventos
+                    input.addEventListener('change', handleNotaChange);
+                    input.addEventListener('focus', handleNotaFocus);
+                });
+            }
+        }
+        
+        // Handler para evento de mudança de nota
+        function handleNotaChange(e) {
+            // Verificar se o valor realmente mudou
+            if (this.value !== this.dataset.originalValue) {
+                salvarNota(this);
+            }
+        }
+        
+        // Handler para evento de foco no campo de nota
+        function handleNotaFocus(e) {
+            this.select();
+        }
+        
+        // Inicializar os inputs de notas
+        inicializarInputsNotas();
+        
+        // Função para salvar nota via AJAX
+        function salvarNota(input) {
+            // Validar nota
+            var valorTexto = input.value.replace(',', '.');
+            var valor = parseFloat(valorTexto);
+            
+            if (isNaN(valor) || valor < 0 || valor > 10) {
+                Swal.fire({
+                    title: 'Valor inválido!',
+                    text: 'A nota deve estar entre 0 e 10.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                input.value = input.dataset.originalValue || '';
+                return;
+            }
+            
+            // Desabilitar o input durante o salvamento
+            input.disabled = true;
+            
+            // Mostrar spinner de carregamento
+            var cell = input.closest('.nota-cell');
+            var spinner = cell.querySelector('.loading-spinner');
+            var feedback = cell.querySelector('.nota-feedback');
+            
+            if (spinner) {
+                spinner.classList.add('show');
+            }
+            
+            // Preparar dados para envio
+            var formData = new FormData();
+            formData.append('acao', 'salvar_nota');
+            formData.append('aluno_id', input.dataset.aluno);
+            formData.append('disciplina_id', input.dataset.disciplina);
+            formData.append('professor_id', 1); // Valor padrão para simplificar
+            formData.append('valor', valor);
+            formData.append('tipo', input.dataset.tipo);
+            formData.append('bimestre', input.dataset.bimestre);
+            
+            console.log('Enviando dados:', {
+                acao: 'salvar_nota',
+                aluno_id: input.dataset.aluno,
+                disciplina_id: input.dataset.disciplina,
+                professor_id: 1,
+                valor: valor,
+                tipo: input.dataset.tipo,
+                bimestre: input.dataset.bimestre
+            });
+            
+            // Usar o fetch API para maior compatibilidade
+            fetch('notas.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Resposta recebida:', data);
+                
+                if (spinner) {
+                    spinner.classList.remove('show');
+                }
+                
+                // Habilitar o input novamente
+                input.disabled = false;
+                
+                if (data && data.sucesso) {
+                    // Atualizar valor original
+                    input.dataset.originalValue = input.value;
+                    
+                    // Mostrar feedback visual
+                    if (feedback) {
+                        feedback.classList.add('show', 'success');
+                    }
+                    
+                    // Notificar o usuário do sucesso
+                    Swal.fire({
+                        title: 'Sucesso!',
+                        text: data.mensagem || 'Nota salva com sucesso!',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(function() {
+                        // Recarregar a página para atualizar as médias
+                        var currentUrl = window.location.href;
+                        window.location.href = currentUrl;
+                    });
+                } else {
+                    // Mostrar erro
+                    Swal.fire({
+                        title: 'Erro!',
+                        text: data && data.mensagem ? data.mensagem : 'Ocorreu um erro ao salvar a nota.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    
+                    // Restaurar valor original
+                    input.value = input.dataset.originalValue || '';
+                    
+                    // Mostrar feedback visual de erro
+                    if (feedback) {
+                        feedback.classList.add('show', 'error');
+                    }
+                }
+                
+                // Remover feedback após um tempo
+                if (feedback) {
+                    setTimeout(function() {
+                        feedback.classList.remove('show', 'success', 'error');
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao salvar nota:', error);
+                
+                if (spinner) {
+                    spinner.classList.remove('show');
+                }
+                
+                // Habilitar o input novamente
+                input.disabled = false;
+                
+                // Mostrar erro
+                Swal.fire({
+                    title: 'Erro!',
+                    text: 'Ocorreu um erro ao salvar a nota. Tente novamente.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                
+                // Restaurar valor original
+                input.value = input.dataset.originalValue || '';
+            });
+        }
+        
+        // Funcionalidade para imprimir boletim
+        var btnImprimirBoletim = document.getElementById('btnImprimirBoletim');
+        var boletimModal = new bootstrap.Modal(document.getElementById('boletimModal'));
+        
+        if (btnImprimirBoletim) {
+            btnImprimirBoletim.addEventListener('click', function() {
+                // Obter dados do aluno selecionado
+                var alunoSelect = document.getElementById('aluno_id');
+                var alunoNome = alunoSelect.options[alunoSelect.selectedIndex].text;
+                var alunoMatricula = alunoNome.match(/\((.*?)\)/);
+                var turmaSelect = document.getElementById('turma_id');
+                var turmaNome = turmaSelect.options[turmaSelect.selectedIndex].text;
+                
+                // Preencher cabeçalho do boletim
+                document.getElementById('boletimAlunoNome').textContent = 'Aluno: ' + alunoNome.replace(/\(.*?\)/, '').trim();
+                document.getElementById('boletimAlunoMatricula').textContent = 'Matrícula: ' + (alunoMatricula ? alunoMatricula[1] : '');
+                document.getElementById('boletimAlunoTurma').textContent = 'Turma: ' + turmaNome;
+                
+                // Preencher tabela do boletim
+                var tabelaBoletim = document.getElementById('tabelaBoletim').querySelector('tbody');
+                tabelaBoletim.innerHTML = '';
+                
+                // Obter todas as disciplinas e médias da tabela principal
+                var disciplinaRows = document.querySelectorAll('.disciplina-row');
+                disciplinaRows.forEach(function(row) {
+                    var disciplinaNome = row.querySelector('td:first-child').textContent;
+                    var mediaCells = row.querySelectorAll('.media-cell');
+                    
+                    var newRow = document.createElement('tr');
+                    var disciplinaCell = document.createElement('td');
+                    disciplinaCell.textContent = disciplinaNome;
+                    newRow.appendChild(disciplinaCell);
+                    
+                    // Adicionar médias dos bimestres (índices 4, 9, 14, 19 são as médias dos bimestres)
+                    var mediaFinal = 0;
+                    var countBimestres = 0;
+                    
+                    for (var i = 0; i < 4; i++) {
+                        var mediaCell = document.createElement('td');
+                        var mediaValue = mediaCells[i].textContent.trim();
+                        mediaCell.textContent = mediaValue;
+                        mediaCell.className = mediaCells[i].className.replace('media-cell', '').trim();
+                        newRow.appendChild(mediaCell);
+                        
+                        if (mediaValue !== '-') {
+                            mediaFinal += parseFloat(mediaValue.replace(',', '.'));
+                            countBimestres++;
+                        }
+                    }
+                    
+                    // Adicionar média final
+                    var mediaFinalCell = document.createElement('td');
+                    var mediaFinalValue = mediaCells[4].textContent.trim();
+                    mediaFinalCell.textContent = mediaFinalValue;
+                    mediaFinalCell.className = mediaCells[4].className.replace('media-cell', '').trim();
+                    newRow.appendChild(mediaFinalCell);
+                    
+                    // Adicionar situação
+                    var situacaoCell = document.createElement('td');
+                    if (mediaFinalValue !== '-') {
+                        var mediaFinalNum = parseFloat(mediaFinalValue.replace(',', '.'));
+                        if (mediaFinalNum >= 6) {
+                            situacaoCell.textContent = 'Aprovado';
+                            situacaoCell.className = 'media-aprovado';
+                        } else {
+                            situacaoCell.textContent = 'Reprovado';
+                            situacaoCell.className = 'media-reprovado';
+                        }
+                    } else {
+                        situacaoCell.textContent = '-';
+                    }
+                    newRow.appendChild(situacaoCell);
+                    
+                    tabelaBoletim.appendChild(newRow);
+                });
+                
+                // Mostrar modal
+                boletimModal.show();
+            });
+        }
+        
+        // Funcionalidade para imprimir boletim
+        var btnPrintBoletim = document.getElementById('btnPrintBoletim');
+        if (btnPrintBoletim) {
+            btnPrintBoletim.addEventListener('click', function() {
+                var conteudoBoletim = document.getElementById('boletimPrint').innerHTML;
+                var janelaImpressao = window.open('', '', 'height=600,width=800');
+                
+                janelaImpressao.document.write('<html><head><title>Boletim Escolar</title>');
+                janelaImpressao.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">');
+                janelaImpressao.document.write('<style>.media-aprovado { color: #28a745; } .media-reprovado { color: #dc3545; }</style>');
+                janelaImpressao.document.write('</head><body>');
+                janelaImpressao.document.write('<div class="container py-4">');
+                janelaImpressao.document.write(conteudoBoletim);
+                janelaImpressao.document.write('</div></body></html>');
+                
+                janelaImpressao.document.close();
+                janelaImpressao.focus();
+                
+                setTimeout(function() {
+                    janelaImpressao.print();
+                    janelaImpressao.close();
+                }, 500);
+            });
+        }
+    });
+    </script>
+</body>
+</html>

@@ -59,16 +59,19 @@ if ($aba_ativa === 'editar' && isset($_GET['id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Estudantes - EduGestão</title>
-    <!-- Bootstrap 5.3 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <!-- DataTables -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.18/dist/sweetalert2.min.css">
     <style>
         /* Estilos gerais */
+        body {
+            background-color: #f8f9fa;
+        }
         .foto-preview {
             width: 150px;
             height: 150px;
@@ -78,70 +81,40 @@ if ($aba_ativa === 'editar' && isset($_GET['id'])) {
         }
         .card-estudante {
             transition: all 0.3s ease;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
         .card-estudante:hover {
             transform: translateY(-5px);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
         }
         .nav-link.active {
-            border-bottom: 3px solid #4e73df;
-            color: #4e73df;
+            border-bottom: 3px solid #0d6efd;
+            color: #0d6efd;
             font-weight: 600;
         }
-        
-        /* Estilos do sidebar e animações */
-        #sidebar-wrapper {
-            min-height: 100vh;
-            width: 250px;
-            transition: margin 0.25s ease-out;
-            z-index: 1;
-        }
-        
-        #page-content-wrapper {
-            min-width: 100vw;
-            transition: margin-left 0.25s ease-out;
-        }
-        
-        .sb-sidenav-toggled #sidebar-wrapper {
-            margin-left: -250px;
-        }
-        
-        .sb-sidenav-toggled #page-content-wrapper {
-            margin-left: 0;
-        }
-        
-        /* Animações para itens do menu */
-        .list-group-item {
-            transition: all 0.2s ease;
-            border-left: 3px solid transparent;
-            padding-left: 1.25rem;
-        }
-        
-        .list-group-item:hover {
+        .page-header {
             background-color: #f8f9fa;
-            border-left: 3px solid #4e73df;
-            padding-left: 1.5rem;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
         }
-        
-        .list-group-item.active {
-            background-color: rgba(78, 115, 223, 0.1);
-            color: #4e73df;
-            border-left: 3px solid #4e73df;
-            font-weight: 600;
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
         }
-        
-        .list-group-item i {
-            width: 20px;
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            line-height: 36px;
             text-align: center;
-            margin-right: 10px;
-            transition: transform 0.2s ease;
+            border-radius: 50%;
         }
-        
-        .list-group-item:hover i {
-            transform: scale(1.2);
+        .btn-icon i {
+            line-height: inherit;
         }
-        
-        /* Animação para dropdown do usuário */
         .dropdown-menu {
             animation: fadeIn 0.2s ease-in-out;
         }
@@ -149,6 +122,29 @@ if ($aba_ativa === 'editar' && isset($_GET['id'])) {
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Estilos para as abas */
+        .nav-tabs {
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 20px;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 0.5rem 1rem;
+            margin-right: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .nav-tabs .nav-link:hover {
+            color: #0d6efd;
+            border-bottom: 3px solid #e9ecef;
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: 600;
+            border-bottom: 3px solid #0d6efd;
+            background-color: transparent;
         }
         
         /* Responsividade */
@@ -174,48 +170,27 @@ if ($aba_ativa === 'editar' && isset($_GET['id'])) {
     </style>
 </head>
 <body>
-    <!-- Layout similar ao dashboard -->
-    <div class="d-flex" id="wrapper">
-        <!-- Sidebar -->
-        <div class="bg-white border-end" id="sidebar-wrapper">
-            <div class="sidebar-heading d-flex align-items-center p-3">
-                <i class="fas fa-school text-primary me-2"></i>
-                <span class="fs-4 fw-bold">EduGestão</span>
-            </div>
-            <div class="list-group list-group-flush">
-                <a href="index.php" class="list-group-item list-group-item-action">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                </a>
-                <a href="estudante.php" class="list-group-item list-group-item-action active">
-                    <i class="fas fa-user-graduate"></i> Estudantes
-                </a>
-                <a href="notas.php" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chalkboard-teacher"></i> Notas
-                </a>
-                <a href="cursos.php" class="list-group-item list-group-item-action">
-                    <i class="fas fa-book"></i> Cursos
-                <a href="relatorios.php" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chart-bar"></i> Relatórios
-                </a>
+    <!-- Menu de navegação compartilhado -->
+    <?php include 'menu.php'; ?>
+    
+    <!-- Conteúdo principal -->
+    <div class="container-fluid py-4">
+        <!-- Cabeçalho da página -->
+        <div class="page-header">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h1 class="h3 mb-0">Gestão de Estudantes</h1>
+                        <p class="text-muted">Cadastre, visualize e gerencie os estudantes da instituição</p>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastrarEstudanteModal">
+                            <i class="fas fa-plus-circle me-2"></i> Novo Estudante
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <!-- Page Content -->
-        <div id="page-content-wrapper">
-            <!-- Top navigation -->
-            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
-                <div class="container-fluid">
-                    <!-- Hamburger menu for mobile -->
-                    <button class="navbar-toggler" id="sidebarToggle" type="button">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    
-                    <!-- Page title -->
-                    <div class="d-flex flex-column">
-                        <span class="navbar-brand mb-0 h1">
-                            <i class="fas fa-user-graduate me-2 text-primary"></i>
-                            Gestão de Estudantes
-                        </span>
                         <span class="text-muted small">Cadastro e manutenção de estudantes</span>
                     </div>
                     
