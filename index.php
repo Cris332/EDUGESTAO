@@ -1,0 +1,395 @@
+<?php
+// Incluir os arquivos de dados
+require_once 'conexao.php';
+require_once 'dashboard_stats.php';
+require_once 'attendance_data.php';
+require_once 'eventos_data.php';
+require_once 'atividades_data.php';
+require_once 'anuncios_data.php';
+require_once 'desempenho_data.php';
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGestão - Dashboard</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Overlay for mobile sidebar -->
+    <div class="overlay" id="sidebarOverlay"></div>
+    
+    <div class="d-flex" id="wrapper">
+        <!-- Sidebar -->
+        <div class="bg-white border-end" id="sidebar-wrapper">
+            <div class="sidebar-heading d-flex align-items-center p-3">
+                <i class="fas fa-school text-primary me-2"></i>
+                <span class="fs-4 fw-bold">EduGestão</span>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="estudante.php" class="list-group-item list-group-item-action">
+                    <i class="fas fa-user-graduate"></i> Estudantes
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chalkboard-teacher"></i> Professores
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-door-open"></i> Turmas
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-calendar-alt"></i> Calendário
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-book"></i> Relatórios
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-cog"></i> Configurações
+                </a>
+            </div>
+        </div>
+        <!-- Page Content -->
+        <div id="page-content-wrapper">
+            <!-- Top navigation -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+                <div class="container-fluid">
+                    <!-- Hamburger menu for mobile -->
+                    <button class="navbar-toggler" id="sidebarToggle" type="button">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    
+                    <!-- Brand logo for mobile -->
+                    <a class="navbar-brand d-flex align-items-center" href="#">
+                        <i class="fas fa-school text-primary me-2"></i>
+                        <span class="fw-bold">EduGestão</span>
+                    </a>
+                    
+                    <div class="d-none d-md-flex align-items-center">
+                        <span class="navbar-text me-3">
+                            Dashboard
+                        </span>
+                        <span class="text-muted small">Visão geral da escola</span>
+                    </div>
+                    
+                    <div class="ms-auto d-flex align-items-center">
+                        <div class="input-group me-3 d-none d-lg-flex">
+                            <input class="form-control" type="search" placeholder="Pesquisar..." aria-label="Pesquisar">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="dropdown">
+                            <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-bell"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    3
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Dashboard content -->
+            <div class="container-fluid p-3 p-lg-4">
+                <!-- Stats Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 animate__animated animate__fadeIn">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Total de Alunos</h6>
+                                        <h2 class="fw-bold"><?php echo $totalAlunos; ?></h2>
+                                        <p class="text-<?php echo $variacaoAlunos >= 0 ? 'success' : 'danger'; ?> small mb-0">
+                                            <i class="fas fa-arrow-<?php echo $variacaoAlunos >= 0 ? 'up' : 'down'; ?> me-1"></i> 
+                                            <?php echo abs($variacaoAlunos); ?>% este mês
+                                        </p>
+                                    </div>
+                                    <div class="rounded-circle bg-light p-2 p-sm-3 d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-user-graduate text-primary fs-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 animate__animated animate__fadeIn" style="animation-delay: 0.1s">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Professores</h6>
+                                        <h2 class="fw-bold"><?php echo $totalProfessores; ?></h2>
+                                        <p class="text-muted small mb-0">Corpo docente</p>
+                                    </div>
+                                    <div class="rounded-circle bg-light p-2 p-sm-3 d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-chalkboard-teacher text-info fs-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 animate__animated animate__fadeIn" style="animation-delay: 0.2s">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Turmas</h6>
+                                        <h2 class="fw-bold"><?php echo $totalTurmas; ?></h2>
+                                        <p class="text-muted small mb-0">Em andamento</p>
+                                    </div>
+                                    <div class="rounded-circle bg-light p-2 p-sm-3 d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-door-open text-warning fs-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 animate__animated animate__fadeIn" style="animation-delay: 0.3s">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Cursos</h6>
+                                        <h2 class="fw-bold"><?php echo $totalCursos; ?></h2>
+                                        <p class="text-muted small mb-0">Ensino médio</p>
+                                    </div>
+                                    <div class="rounded-circle bg-light p-2 p-sm-3 d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-book text-success fs-5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts and Events -->
+                <div class="row g-3 mb-4">
+                    <!-- Attendance Chart -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0">
+                                <h5 class="card-title mb-0">Presença por Período</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="attendanceChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upcoming Events -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Próximos Eventos</h5>
+                            </div>
+                            <div class="card-body">
+                                <?php if (count($proximosEventos) > 0): ?>
+                                    <?php foreach ($proximosEventos as $evento): ?>
+                                        <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center mb-3 pb-3 border-bottom">
+                                            <div class="bg-light rounded p-2 p-sm-3 text-center me-0 me-sm-3 mb-2 mb-sm-0">
+                                                <span class="d-block fw-bold"><?php echo date('d', strtotime($evento['data_evento'])); ?></span>
+                                                <span class="small text-muted"><?php echo date('M', strtotime($evento['data_evento'])); ?></span>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1"><?php echo $evento['titulo']; ?></h6>
+                                                <p class="small text-muted mb-2 mb-sm-0">
+                                                    <?php 
+                                                    if (!empty($evento['hora_inicio']) && !empty($evento['hora_fim'])) {
+                                                        echo substr($evento['hora_inicio'], 0, 5) . ' - ' . substr($evento['hora_fim'], 0, 5);
+                                                    } else {
+                                                        echo '-';
+                                                    }
+                                                    ?>
+                                                    <?php echo !empty($evento['local']) ? ' • ' . $evento['local'] : ''; ?>
+                                                </p>
+                                            </div>
+                                            <?php 
+                                            $badgeClass = 'primary';
+                                            $badgeText = $evento['tipo'];
+                                            
+                                            if ($evento['status'] == 'adiado') {
+                                                $badgeClass = 'danger';
+                                                $badgeText = 'Adiado';
+                                            } elseif ($evento['tipo'] == 'feriado') {
+                                                $badgeClass = 'success';
+                                            } elseif ($evento['tipo'] == 'prova') {
+                                                $badgeClass = 'warning';
+                                            }
+                                            ?>
+                                            <span class="badge bg-<?php echo $badgeClass; ?> align-self-start align-self-sm-center">
+                                                <?php echo ucfirst($badgeText); ?>
+                                            </span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="text-center py-4">
+                                        <p class="text-muted">Não há eventos próximos.</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Charts -->
+                <div class="row g-3 mb-4">
+                    <!-- Desempenho por Turma -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Top 3 Turmas com Melhor Desempenho</h5>
+                                <span class="badge bg-primary rounded-pill">Destaque</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="turmasChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Médias por Disciplina -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0">
+                                <h5 class="card-title mb-0">Médias por Disciplina</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="disciplinasChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities and Announcements -->
+                <div class="row g-3">
+                    <!-- Recent Activities -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0">
+                                <h5 class="card-title mb-0">Atividades Recentes</h5>
+                            </div>
+                            <div class="card-body">
+                                <?php if (count($atividadesRecentes) > 0): ?>
+                                    <?php foreach ($atividadesRecentes as $atividade): ?>
+                                        <?php 
+                                        $icone = 'info-circle text-primary';
+                                        if ($atividade['tipo'] == 'falta') {
+                                            $icone = 'exclamation-circle text-danger';
+                                        } elseif ($atividade['tipo'] == 'nota') {
+                                            $icone = 'check-circle text-success';
+                                        } elseif ($atividade['tipo'] == 'evento') {
+                                            $icone = 'calendar-check text-primary';
+                                        }
+                                        ?>
+                                        <div class="activity-item d-flex flex-column flex-sm-row align-items-start mb-3">
+                                            <div class="activity-icon me-0 me-sm-3 mb-2 mb-sm-0">
+                                                <i class="fas fa-<?php echo $icone; ?>"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1"><?php echo ucfirst($atividade['tipo']); ?> Registrada</h6>
+                                                <p class="text-muted mb-1"><?php echo $atividade['descricao']; ?></p>
+                                                <p class="small text-muted">
+                                                    <?php 
+                                                    $hoje = date('Y-m-d');
+                                                    $ontem = date('Y-m-d', strtotime('-1 day'));
+                                                    
+                                                    if ($atividade['data_registro'] == $hoje) {
+                                                        echo 'Hoje';
+                                                    } elseif ($atividade['data_registro'] == $ontem) {
+                                                        echo 'Ontem';
+                                                    } else {
+                                                        echo date('d/m/Y', strtotime($atividade['data_registro']));
+                                                    }
+                                                    
+                                                    echo ' ' . substr($atividade['hora_registro'], 0, 5);
+                                                    echo ' • Via ' . $atividade['origem'];
+                                                    ?>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="text-center py-4">
+                                        <p class="text-muted">Não há atividades recentes.</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Announcements -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Anúncios</h5>
+                                <a href="#" class="text-decoration-none small">Ver todos</a>
+                            </div>
+                            <div class="card-body">
+                                <?php if (count($anuncios) > 0): ?>
+                                    <?php foreach ($anuncios as $index => $anuncio): ?>
+                                        <div class="announcement-item<?php echo $index < count($anuncios) - 1 ? ' mb-3 pb-3 border-bottom' : ''; ?>">
+                                            <div class="d-flex flex-column flex-sm-row justify-content-between mb-2">
+                                                <h6 class="mb-1 mb-sm-0"><?php echo $anuncio['titulo']; ?></h6>
+                                                <span class="text-muted small"><?php echo date('d/m/Y', strtotime($anuncio['data_publicacao'])); ?></span>
+                                            </div>
+                                            <p class="text-muted mb-0"><?php echo $anuncio['conteudo']; ?></p>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="text-center py-4">
+                                        <p class="text-muted">Não há anúncios disponíveis.</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Chart Data from PHP -->
+    <script>
+    // Create global chart data object
+    window.chartData = {
+        // Attendance data
+        meses: <?php echo json_encode($dadosPresenca['meses']); ?>,
+        presenca: <?php echo json_encode($dadosPresenca['presenca']); ?>,
+        ausencia: <?php echo json_encode($dadosPresenca['ausencia']); ?>,
+        justificado: <?php echo json_encode($dadosPresenca['justificado']); ?>,
+        
+        // Turmas data
+        turmas: <?php echo json_encode($desempenhoTurmas['turmas']); ?>,
+        medias: <?php echo json_encode($desempenhoTurmas['medias']); ?>,
+        
+        // Disciplinas data
+        disciplinas: <?php echo json_encode($mediasDisciplinas['disciplinas']); ?>,
+        mediasDisciplinas: <?php echo json_encode($mediasDisciplinas['medias']); ?>
+    };
+    </script>
+    
+    <!-- Custom JS -->
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
